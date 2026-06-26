@@ -1,0 +1,10 @@
+# 実値を入れた tfvars は機微 (basic_auth_password を含む)。コミットしない。
+terraform.tfvars
+*.auto.tfvars
+
+# terraform 作業ディレクトリ / state ファイル。
+.terraform/
+.terraform.lock.hcl
+terraform.tfstate
+terraform.tfstate.backup
+*.tfplan

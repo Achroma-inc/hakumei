@@ -1,0 +1,90 @@
+# hakumei 顧客配布版 terraform.tfvars 記入例
+# このファイルを terraform.tfvars にコピーして値を埋めてください。
+# terraform.tfvars は .gitignore に入れる (basic_auth_password を含むため)。
+
+# ------------------------------------------------------------------------------
+# 必須項目
+# ------------------------------------------------------------------------------
+
+# デプロイ先 AWS アカウント ID (12 桁)。CUR 集約先と同一アカウント。
+aws_account_id = "123456789012"
+
+# 顧客識別子。リソース名・Secrets 名の prefix に使う (英小文字・数字・ハイフン、30 文字以内)
+customer_name = "acme"
+
+# CUR 2.0 が配信されている S3 バケット名 (自社の AWS Billing で設定したもの)
+cur_s3_bucket = "your-cur-bucket-name"
+
+# CUR データの S3 プレフィックス。AWS Billing コンソールの「Data Exports」で確認可
+# 例: data-exports/cur2-hourly/your-export-name/data
+cur_s3_prefix = "data-exports/cur2-hourly/your-export-name/data"
+
+# Bedrock API キー (ADR-0024: 顧客が自社 AWS で発行)。
+# 自社アカウントで発行した Bedrock 長期 API キーを指定する。Bedrock 利用料は顧客負担。
+# 事前に Claude Opus 4.8 (jp.anthropic.claude-opus-4-8) のモデルアクセスを有効化しておくこと。
+# 初回 apply 時に Secrets Manager に投入される。空のまま apply すると ECS タスクが
+# AWSCURRENT 不在で起動失敗し service 安定化が完了しないため必須。
+# 機微値: このファイルは git commit 禁止 (.gitignore で除外済み)。
+# tfvars に書かず -var "bedrock_api_key=..." または TF_VAR_bedrock_api_key で渡してもよい。
+bedrock_api_key = "<自社 AWS で発行した Bedrock API キー文字列>"
+# bedrock_api_key_version = 1  # ローテーション時に 2, 3, ... と increment
+
+# カスタムドメイン (任意、ACH-476)
+# 未指定なら ECS Express デフォルトの *.ecs.<region>.on.aws を HTTPS で使う (AWS Managed 証明書付き)。
+# 自社ドメインで公開したい場合のみ FQDN と Route 53 Hosted Zone ID をペアで指定する。
+# 指定時: ACM 証明書を発行し SNI で HTTPS listener に追加 + Route 53 で Alias レコードを作成。
+# domain_name = "hakumei.example.com"
+# route53_hosted_zone_id = "Z0123456789ABCDEFGHIJ"
+
+# アプリ層 Basic 認証 (ACH-423)
+# デフォルト true (有効)。WAF / Cognito / 閉域 NW で独自にアクセス制御する場合のみ false。
+# false の場合 user/password は不要 (Secrets Manager も作られない)。
+# OFF 時のアクセス制御責任は顧客側 (WAF / Cognito / 閉域 NW 必須)。
+basic_auth_enabled = true
+
+# basic_auth_enabled = false 時の外部アクセス制御方式 (ACH-476)
+# HTTPS は盗聴対策で無認証公開対策ではないため、Basic 認証 OFF にする場合は外部アクセス
+# 制御方式の明示が必須 (precondition で apply ブロック):
+#   - "waf-cognito"          : WAF + Cognito などのアプリ層認証を別途構築済み
+#   - "private-network-only" : VPN / Tailscale / Direct Connect 等の閉域 NW
+#   - "reverse-proxy-auth"   : Cloudflare Access / IAP / 自社 SSO 等のリバプロ
+# basic_auth_enabled = true ならコメントアウトのままで可。
+# external_access_control_mitigation = "waf-cognito"
+
+# Basic 認証のユーザー/パスワード (basic_auth_enabled = true のときのみ必須)
+# 任意の値でよい。長さ 12 文字以上推奨。
+# ACH-473: ephemeral 変数 + write-only attribute で tfstate には保存されない (apply 時のみ AWS へ送信)。
+# 値を変更したら basic_auth_password_version を increment して再 apply する。
+basic_auth_user             = "admin"
+basic_auth_password         = "change-me-strong-password"
+# basic_auth_password_version = 1  # 値変更時に 2, 3, ... と increment
+
+# ------------------------------------------------------------------------------
+# 任意項目 (デフォルトで動く。必要時のみ上書き)
+# ------------------------------------------------------------------------------
+
+# デプロイ先リージョン (本配布バージョンは ap-northeast-1 固定)
+# aws_region = "ap-northeast-1"
+
+# hakumei コンテナイメージ URI
+# デフォルトは ECR Public の :latest を指し、auto_update_enabled = true (デフォルト) の
+# 場合は日次で最新 digest に自動更新される。特定バージョンに固定したい場合のみ上書き:
+# app_image = "public.ecr.aws/y2a9a6u8/hakumei:sha-xxxxxxx"
+
+# 日次自動更新 (ACH-484)
+# デフォルト true: 毎日 JST 04:00 に ECR Public の hakumei:latest 最新 digest を取得して
+# ECS Express を再デプロイする (no-op で冪等)。手動運用したい場合のみ false:
+# auto_update_enabled       = false
+# update_schedule_cron      = "cron(0 4 * * ? *)"   # 分 時 日 月 曜日 年
+# update_schedule_timezone  = "Asia/Tokyo"
+
+# ECS タスクと ALB を配置する public サブネット (最低 2 AZ)。
+# 空のままなら自社のデフォルト VPC のサブネットを使う
+# subnet_ids = ["subnet-aaaa", "subnet-bbbb"]
+
+# 全リソースに付与する共通タグ (コスト集計などに使う)
+# tags = {
+#   Project = "hakumei"
+#   Owner   = "infra-team"
+#   Env     = "production"
+# }
