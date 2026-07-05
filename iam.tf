@@ -137,6 +137,14 @@ resource "aws_iam_role_policy" "task_app" {
         Resource = "*"
       },
       {
+        # ACH-495: 推奨カードの Name タグ表示 (Tagging API)。
+        # read-only でリソースレベル制限不可。
+        Sid      = "TaggingApiRead"
+        Effect   = "Allow"
+        Action   = ["tag:GetResources"]
+        Resource = "*"
+      },
+      {
         # AIチャットで「自社環境の状況」を読み取るための最小 read 群。
         # 自アカウント単体のみ。他アカウントへの AssumeRole は member_account_ids
         # 指定時のみ別ポリシー (task_member_assume) で付与する (README §8 参照)。
