@@ -128,6 +128,15 @@ resource "aws_iam_role_policy" "task_app" {
         Resource = "*"
       },
       {
+        # ACH-496: Trusted Advisor のコスト最適化チェック (推定節約額の取り込み)。
+        # read-only API のためリソースレベル制限不可。Business/Enterprise Support 必須で、
+        # 未契約時はアプリ側が notice を出して COH / CUR 推奨のみで動作する。
+        Sid      = "TrustedAdvisorRead"
+        Effect   = "Allow"
+        Action   = ["trustedadvisor:ListRecommendations"]
+        Resource = "*"
+      },
+      {
         # AIチャットで「自社環境の状況」を読み取るための最小 read 群。
         # 自アカウント単体のみ。他アカウントへの AssumeRole は member_account_ids
         # 指定時のみ別ポリシー (task_member_assume) で付与する (README §8 参照)。
