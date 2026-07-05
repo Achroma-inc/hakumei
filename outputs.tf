@@ -60,3 +60,8 @@ output "auto_update_lambda_function_name" {
   description = "自動更新 Lambda の関数名 (auto_update_enabled = false なら null)。手動 invoke 時に使う"
   value       = local.auto_update_enabled ? aws_lambda_function.auto_update[0].function_name : null
 }
+
+output "task_role_arn" {
+  description = "ECS タスクロール ARN (ACH-500)。member-readonly-role/ の trusted_principal_arn に指定する"
+  value       = aws_iam_role.task.arn
+}

@@ -129,8 +129,8 @@ resource "aws_iam_role_policy" "task_app" {
       },
       {
         # AIチャットで「自社環境の状況」を読み取るための最小 read 群。
-        # 自アカウント単体のみ。他アカウントへの AssumeRole は本構成では付与しない
-        # (README §拡張オプション参照)。
+        # 自アカウント単体のみ。他アカウントへの AssumeRole は member_account_ids
+        # 指定時のみ別ポリシー (task_member_assume) で付与する (README §8 参照)。
         Sid    = "AwsApiReadOnly"
         Effect = "Allow"
         Action = [
@@ -162,5 +162,25 @@ resource "aws_iam_role_policy" "task_app" {
         ]
       },
     ]
+  })
+}
+
+# ACH-500: メンバーアカウントのリソース実態を AI チャットから読むためのクロスアカウント
+# AssumeRole。member_account_ids 指定時のみ作成し、対象を各メンバーの
+# hakumei-readonly-role (member-readonly-role/ で作成、名前固定) に限定する。
+# メンバー側ロールの信頼ポリシーも本タスクロール ARN に限定されるため相互に最小権限。
+resource "aws_iam_role_policy" "task_member_assume" {
+  count = length(var.member_account_ids) > 0 ? 1 : 0
+
+  name = "hakumei-member-assume"
+  role = aws_iam_role.task.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid      = "AssumeMemberReadonlyRole"
+      Effect   = "Allow"
+      Action   = "sts:AssumeRole"
+      Resource = [for id in distinct(var.member_account_ids) : "arn:aws:iam::${id}:role/hakumei-readonly-role"]
+    }]
   })
 }

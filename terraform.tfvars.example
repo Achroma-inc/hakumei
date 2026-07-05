@@ -82,6 +82,13 @@ basic_auth_password         = "change-me-strong-password"
 # 空のままなら自社のデフォルト VPC のサブネットを使う
 # subnet_ids = ["subnet-aaaa", "subnet-bbbb"]
 
+# クロスアカウント read (ACH-500、任意)
+# AI チャットから組織内メンバーアカウントのリソース実態 (EC2 describe 等) を読みたい場合、
+# 対象アカウント ID を列挙する (タスクロールに各アカウントの hakumei-readonly-role への
+# AssumeRole を許可)。別途、各メンバーアカウント側で member-readonly-role/ の apply が必要
+# (手順は README §8)。空のままなら単一アカウント運用。
+# member_account_ids = ["234567890123", "345678901234"]
+
 # 全リソースに付与する共通タグ (コスト集計などに使う)
 # tags = {
 #   Project = "hakumei"

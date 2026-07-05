@@ -1,0 +1,17 @@
+# hakumei メンバーアカウント用 read-only ロール terraform.tfvars 記入例
+# このファイルを terraform.tfvars にコピーして値を埋めてください。
+# メンバーアカウントごとに値を変えて apply します (state も分けること、main.tf コメント参照)。
+
+# ロールを作成するメンバーアカウントの ID (12 桁)。
+# apply に使う credential (AWS_PROFILE) のアカウントと一致している必要がある。
+member_account_id = "234567890123"
+
+# hakumei 本体スタックのタスクロール ARN。
+# 本体スタックのディレクトリで `terraform output task_role_arn` を実行して得た値。
+trusted_principal_arn = "arn:aws:iam::123456789012:role/hakumei-ecs-express-task"
+
+# 共通タグ (任意)
+# tags = {
+#   Project = "hakumei"
+#   Owner   = "infra-team"
+# }

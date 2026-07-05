@@ -304,6 +304,22 @@ variable "vpc_cidr" {
   default     = "10.0.0.0/16"
 }
 
+variable "member_account_ids" {
+  description = <<-EOT
+    (オプション、ACH-500) AI チャットからリソース実態 (EC2 describe 等) を読みたい
+    組織内メンバーアカウントの ID リスト (12 桁)。
+    指定するとタスクロールに各アカウントの hakumei-readonly-role への sts:AssumeRole を許可する。
+    別途、各メンバーアカウント側で member-readonly-role/ を apply してロールを作ること (README §8)。
+    空 (デフォルト) なら AssumeRole 権限は付与しない (単一アカウント運用)。
+  EOT
+  type        = list(string)
+  default     = []
+  validation {
+    condition     = alltrue([for id in var.member_account_ids : can(regex("^[0-9]{12}$", id))])
+    error_message = "member_account_ids の各要素は 12 桁の数字である必要があります"
+  }
+}
+
 variable "tags" {
   description = "全リソースに付与する共通タグ"
   type        = map(string)
