@@ -147,7 +147,7 @@ resource "aws_iam_role_policy" "task_app" {
       {
         # AIチャットで「自社環境の状況」を読み取るための最小 read 群。
         # 自アカウント単体のみ。他アカウントへの AssumeRole は member_account_ids
-        # 指定時のみ別ポリシー (task_member_assume) で付与する (README §8 参照)。
+        # 指定時のみ別ポリシー (task_member_assume) で付与する (README §5 参照)。
         Sid    = "AwsApiReadOnly"
         Effect = "Allow"
         Action = [

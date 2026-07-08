@@ -3,7 +3,7 @@
 # hakumei 本体 (管理アカウント) の AI チャットが、組織内メンバーアカウントの
 # リソース実態 (EC2 describe 等) を読むための AssumeRole 先ロールを作る。
 # **メンバーアカウントごとに 1 回、そのアカウントの credential で apply する**
-# (本体スタックとは別 state。手順は配布 README §8 参照)。
+# (本体スタックとは別 state。手順は配布 README §5 参照)。
 #
 # - 信頼元: hakumei 本体スタックの ECS タスクロール (output `task_role_arn`)
 # - 権限: AWS 管理ポリシー ReadOnlyAccess (読み取りのみ、変更系は一切不可)

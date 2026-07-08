@@ -306,10 +306,10 @@ variable "vpc_cidr" {
 
 variable "member_account_ids" {
   description = <<-EOT
-    (オプション、ACH-500) AI チャットからリソース実態 (EC2 describe 等) を読みたい
-    組織内メンバーアカウントの ID リスト (12 桁)。
+    (ACH-500) AI チャットの実態確認 (EC2 describe 等) の対象とする
+    組織内メンバーアカウントの ID リスト (12 桁)。メンバーアカウントを持つ組織では必須。
     指定するとタスクロールに各アカウントの hakumei-readonly-role への sts:AssumeRole を許可する。
-    別途、各メンバーアカウント側で member-readonly-role/ を apply してロールを作ること (README §8)。
+    別途、各メンバーアカウント側で member-readonly-role/ を apply してロールを作ること (README §5)。
     空 (デフォルト) なら AssumeRole 権限は付与しない (単一アカウント運用)。
   EOT
   type        = list(string)
