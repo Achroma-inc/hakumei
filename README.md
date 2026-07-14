@@ -28,7 +28,7 @@ AWS 標準のコストツール (Cost Explorer / Cost Optimization Hub / Trusted
 
 #### hakumei を使うべき理由
 
-- **標準の最適化推奨に現れない浪費を検出する**: Cost Optimization Hub / Compute Optimizer の推奨は EC2・EBS・Lambda・RDS・NAT 等のリソース単位が中心。hakumei はその枠外にある浪費 — ネットワーク利用量の中身 (NAT Gateway 高転送に対する S3 Gateway Endpoint 未設定の検出・リージョン間 / AZ 間転送・CloudFront アウトバウンド)、ライフサイクル未設定の S3 バケット、無期限保持の CloudWatch Logs、古い EBS / RDS スナップショット — を CUR の実利用データから直接検出します。EBS は「アタッチ済みだが IOPS ゼロ」の実質未使用まで踏み込みます
+- **標準の最適化推奨では検知できない推奨事項を提示する**: Cost Optimization Hub / Compute Optimizer の推奨は EC2・EBS・Lambda・RDS・NAT 等のリソース単位が中心。hakumei はこれらでは検知できない推奨事項 — ネットワーク利用量の中身 (NAT Gateway 高転送に対する S3 Gateway Endpoint 未設定の検出・リージョン間 / AZ 間転送・CloudFront アウトバウンド)、ライフサイクル未設定の S3 バケット、無期限保持の CloudWatch Logs、古い EBS / RDS スナップショット — を CUR の実利用データから直接検出して提示します。EBS は「アタッチ済みだが IOPS ゼロ」の実質未使用まで踏み込みます
 - **推奨を概算のまま出さない**: 標準ツールの削減推奨 (メトリクスベースの概算) を CUR 実コスト・実リソースと突合し、妥当性 (妥当 / 条件付き / 疑わしい) を AI が判定してから提示します。例えば Cost Optimization Hub が「EC2 の rightsize で月 $120 削減」と推奨しても、CUR 上のそのインスタンスの直近 30 日実コストが $40 なら、削減見込みが実際の支出を上回っており概算の前提が実態と乖離しています。hakumei はこれを「疑わしい」と根拠付きで併記するため、効果の薄い推奨に作業時間を使わずに済みます
 - **運用コストを下げる**: 各コンソールを人が巡回・照合する代わりに、コストレポート・削減推奨・AI サマリが 1 ページに自動で揃います。裏取りも AI チャットが AWS API を直接叩いて完結します
 
@@ -42,6 +42,22 @@ AWS 標準のコストツール (Cost Explorer / Cost Optimization Hub / Trusted
 | 各サービスコンソール (EC2 / RDS 等) | 推奨の裏取り (本当に未使用か等) は各コンソール・各アカウントを人が見て回る | AI チャットが AWS API を直接叩き、組織横断で実リソースを確認 (§5) |
 
 > AWS FinOps Agent の記載は 2026-07 時点 (public preview)。機能・料金は GA までに変わる可能性があります。
+
+### ランニングコストの目安 (アイドル時)
+
+デフォルト構成 (`cpu = 1024` / `memory = 2048`、ap-northeast-1) で常時稼働する固定費の目安です。アクセスが無い月でもこの分は発生します:
+
+| 項目 | 月額目安 (USD) |
+| --- | --- |
+| Fargate タスク ×1 (1 vCPU / 2 GB、24 時間稼働) | 約 $45 |
+| ALB | 約 $18 |
+| Public IPv4 ×3 (ALB 2 AZ 分 + タスク 1) | 約 $11 |
+| Secrets Manager ×2・CloudWatch Logs・S3・Lambda | $1 未満 |
+| **合計 (アイドル時の最低利用料金)** | **約 $75 / 月** |
+
+- AI (Bedrock Claude Opus 4.8) は上記に含まれない完全従量です。参考: Achroma 社内運用 (本番 + デモの 2 環境) の実績で週 $6 前後
+- 数値は Achroma 本番環境 (本配布物と同一構成) の 2026-07 実測単価 (Fargate $0.05056/vCPU-h、ALB $0.0243/h、Public IPv4 $0.005/h。いずれも公表料金と一致) からの月額換算。料金改定・為替で変動するため、正確には [AWS 料金表](https://aws.amazon.com/jp/fargate/pricing/) を参照してください
+- アクセス増で ECS Express が自動スケールした場合、Fargate 費用はタスク数に比例して増えます
 
 ### 検出できるコスト削減推奨
 
