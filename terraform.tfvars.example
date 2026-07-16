@@ -78,8 +78,8 @@ basic_auth_password         = "change-me-strong-password"
 # update_schedule_cron      = "cron(0 4 * * ? *)"   # 分 時 日 月 曜日 年
 # update_schedule_timezone  = "Asia/Tokyo"
 
-# ECS タスクと ALB を配置する public サブネット (最低 2 AZ)。
-# 空のままなら自社のデフォルト VPC のサブネットを使う
+# ECS タスクと ALB を配置する既存の public サブネット (最低 2 AZ、同一 VPC)。
+# 空のままなら hakumei 専用 VPC + public subnet (2 AZ) を新規作成する (既存 VPC には影響しない)
 # subnet_ids = ["subnet-aaaa", "subnet-bbbb"]
 
 # クロスアカウント read (ACH-500。メンバーアカウントを持つ組織では必須)
