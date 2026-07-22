@@ -131,9 +131,10 @@ resource "aws_iam_role_policy" "task_app" {
         # ACH-496: Trusted Advisor のコスト最適化チェック (推定節約額の取り込み)。
         # read-only API のためリソースレベル制限不可。Business/Enterprise Support 必須で、
         # 未契約時はアプリ側が notice を出して COH / CUR 推奨のみで動作する。
+        # #158: 対象リソース明細の取り込み (ListRecommendationResources) を追加。
         Sid      = "TrustedAdvisorRead"
         Effect   = "Allow"
-        Action   = ["trustedadvisor:ListRecommendations"]
+        Action   = ["trustedadvisor:ListRecommendations", "trustedadvisor:ListRecommendationResources"]
         Resource = "*"
       },
       {
