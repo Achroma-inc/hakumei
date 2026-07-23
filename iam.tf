@@ -132,9 +132,10 @@ resource "aws_iam_role_policy" "task_app" {
         # read-only API のためリソースレベル制限不可。Business/Enterprise Support 必須で、
         # 未契約時はアプリ側が notice を出して COH / CUR 推奨のみで動作する。
         # #158: 対象リソース明細の取り込み (ListRecommendationResources) を追加。
+        # #170: awsResourceId 欠落チェックの metadata 列見出し解決 (ListChecks) を追加。
         Sid      = "TrustedAdvisorRead"
         Effect   = "Allow"
-        Action   = ["trustedadvisor:ListRecommendations", "trustedadvisor:ListRecommendationResources"]
+        Action   = ["trustedadvisor:ListRecommendations", "trustedadvisor:ListRecommendationResources", "trustedadvisor:ListChecks"]
         Resource = "*"
       },
       {
