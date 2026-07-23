@@ -157,6 +157,7 @@ resource "aws_iam_role_policy" "task_app" {
           "rds:Describe*",
           "cloudwatch:GetMetricStatistics",
           "cloudwatch:ListMetrics",
+          "logs:DescribeLogGroups", # #169: 無期限保持ロググループの棚卸し
           "s3:List*",
           "s3:GetBucketLifecycleConfiguration",
           "s3:GetBucketLocation",
