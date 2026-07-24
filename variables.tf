@@ -259,6 +259,24 @@ variable "update_schedule_timezone" {
   default     = "Asia/Tokyo"
 }
 
+variable "auto_update_invoker_arns" {
+  description = <<-EOT
+    自動更新 Lambda の invoke を許可する外部 IAM プリンシパル ARN のリスト (opt-in)。
+    CI 等から即時反映をトリガーしたい場合に、その実行ロールの ARN を指定する
+    (例: arn:aws:iam::<account>:role/<ci-role>)。指定したプリンシパルは
+    「この Lambda を invoke できる」だけで、ECS を直接更新する権限は持たない
+    (更新の主体は Lambda のまま)。デフォルト空 = 追加の permission を一切作らない。
+    auto_update_enabled = false のときは無視される。
+  EOT
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition     = alltrue([for a in var.auto_update_invoker_arns : startswith(a, "arn:aws:iam::")])
+    error_message = "auto_update_invoker_arns には IAM プリンシパル ARN (arn:aws:iam::...) を指定する。\"*\" や生アカウント ID は全世界/アカウント全体に invoke を開放してしまうため不可。"
+  }
+}
+
 variable "container_port" {
   description = "コンテナの待ち受けポート。hakumei (Next.js standalone) は 3000"
   type        = number

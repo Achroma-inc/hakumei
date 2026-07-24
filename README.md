@@ -463,6 +463,14 @@ auto_update_enabled = false
 app_image           = "public.ecr.aws/y2a9a6u8/hakumei:sha-xxxxxxx"  # 固定したい version
 ```
 
+CI 等の外部プリンシパルから即時反映をトリガーしたい場合 (opt-in、通常は不要):
+
+```hcl
+# 指定したロールはこの Lambda の invoke だけが可能になる (ECS を直接更新する権限は付かない)。
+# cross-account の場合は呼び出し側ロールにも lambda:InvokeFunction の identity policy が必要。
+auto_update_invoker_arns = ["arn:aws:iam::<account>:role/<ci-role>"]
+```
+
 ### 手動で即時更新する
 
 新バージョンを 04:00 を待たずに反映したいときは、Lambda を 1 回手動 invoke するのが最速です:

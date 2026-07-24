@@ -136,6 +136,21 @@ resource "aws_cloudwatch_log_group" "auto_update" {
   tags              = var.tags
 }
 
+# 外部プリンシパル (CI 等) からの即時反映トリガーを opt-in で許可する resource-based policy。
+# invoke できるのはこの Lambda だけで、ECS 更新の主体は Lambda のまま変わらない。
+# cross-account の場合は呼び出し側ロールにも lambda:InvokeFunction の identity policy が必要。
+# 注意: principal に IAM ロール ARN を指定した場合、そのロールを削除・再作成すると
+# policy 内の principal が無効 ID に化けるため、この permission も作り直すこと。
+# 注意: statement_id は count.index 連番のため、リストの中間要素を消すと後続の permission が
+# destroy/create で付け替わる (一時的に invoke 拒否の窓)。複数 ARN 運用時は末尾追加を基本とする。
+resource "aws_lambda_permission" "auto_update_invokers" {
+  count         = local.auto_update_enabled ? length(var.auto_update_invoker_arns) : 0
+  statement_id  = "external-invoker-${count.index}"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.auto_update[0].function_name
+  principal     = var.auto_update_invoker_arns[count.index]
+}
+
 # ---------- EventBridge Scheduler ----------
 
 # Scheduler が Lambda を invoke するためのロール (Scheduler サービスが assume)
