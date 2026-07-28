@@ -159,7 +159,11 @@ resource "aws_iam_role_policy" "task_app" {
           "cloudwatch:ListMetrics",
           "logs:DescribeLogGroups", # #169: 無期限保持ロググループの棚卸し
           "s3:List*",
-          "s3:GetBucketLifecycleConfiguration",
+          # #293: S3 の GetBucketLifecycleConfiguration API 操作に対応する IAM アクション名は
+          # (API 名に反して) "s3:GetLifecycleConfiguration" (GetBucket が付かない)。
+          # AWS 公式ドキュメント記載どおりの正しい名前に修正 (誤った旧名は文法上は妥当な文字列の
+          # ため IAM がエラーを出さず、実在しないアクションとして黙って何も許可していなかった)。
+          "s3:GetLifecycleConfiguration",
           "s3:GetBucketLocation",
         ]
         Resource = "*"
