@@ -124,6 +124,11 @@ resource "aws_iam_role_policy" "task_app" {
           "ce:GetSavingsPlansPurchaseRecommendation",
           "ce:GetReservationPurchaseRecommendation",
           "ce:GetCostAndUsage",
+          # #428: アカウント単位のSP/RIカバレッジ表示のため追加。ReadOnlyAccess (クロス
+          # アカウントロール側) には既に含まれているが、自アカウント (このポリシー) には
+          # 無かったため明示的に追加する。
+          "ce:GetSavingsPlansCoverage",
+          "ce:GetReservationCoverage",
         ]
         Resource = "*"
       },
