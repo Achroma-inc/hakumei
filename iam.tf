@@ -175,6 +175,17 @@ resource "aws_iam_role_policy" "task_app" {
         Resource = "*"
       },
       {
+        # #539: AIチャットがアカウント名 (エイリアス) から account_id を解決するための
+        # 組織アカウント一覧取得。hakumei は組織管理アカウントで動作するため AssumeRole
+        # 不要でこのロール自身に直接付与する (terraform/iam.tf の OrganizationsRead と
+        # 同一 statement、ACH-224由来。customer/iam.tf に本権限が無く、list_organization_accounts
+        # ツールが全顧客環境で権限エラーになっていた)。
+        Sid      = "OrganizationsRead"
+        Effect   = "Allow"
+        Action   = ["organizations:ListAccounts", "organizations:DescribeAccount"]
+        Resource = "*"
+      },
+      {
         # ノート機能の S3 永続化。本バケットに限定して GetObject / PutObject /
         # DeleteObject / ListBucket を許可する。アプリ側 (src/lib/notes/store.ts) は
         # notes/<scope>/<YYYY-MM-DD>.md のキー設計で読み書きする。
