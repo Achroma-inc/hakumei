@@ -186,6 +186,17 @@ resource "aws_iam_role_policy" "task_app" {
         Resource = "*"
       },
       {
+        # #379 / ADR-0039: エグゼクティブサマリの「クレジット残高」カード用。CURには
+        # クレジットの残高・有効期限が無いため、AWS Billing API (GetCredits) から取得する。
+        # hakumei は組織管理アカウントで動作するため AssumeRole 不要でこのロール自身に
+        # 直接付与する (OrganizationsRead と同じ理由、payerAccountFlag=true で組織全体分を
+        # 一括取得する設計)。billing:* は ce:* とは別のIAM名前空間のため独立Sidにする。
+        Sid      = "BillingCreditsRead"
+        Effect   = "Allow"
+        Action   = ["billing:GetCredits"]
+        Resource = "*"
+      },
+      {
         # ノート機能の S3 永続化。本バケットに限定して GetObject / PutObject /
         # DeleteObject / ListBucket を許可する。アプリ側 (src/lib/notes/store.ts) は
         # notes/<scope>/<YYYY-MM-DD>.md のキー設計で読み書きする。
