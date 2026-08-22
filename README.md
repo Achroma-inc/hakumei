@@ -297,6 +297,30 @@ external_access_control_mitigation = "waf-cognito"   # または "private-networ
 - **アクセス制御の責任はユーザー側**で確実に行ってください。Terraform は mitigation 構成の実在を検証しません
 - CSRF 対策 (状態変更系メソッドの Origin / Content-Type 検証) は維持されます
 
+#### 夜間・週末の ECS タスク自動停止 (任意、#704)
+
+上記の「ランニングコストの目安」の通り Fargate タスクが固定費の 6〜9 割を占めるため (タスクサイズが大きいほど比率は上がる)、業務時間外にタスク数を 0 に落とすことで固定費を削減できます。デフォルト false (常時稼働) で、有効化は各社の判断に委ねます。
+
+> **既存デプロイをアップグレードする場合の注意**: 本機能の追加に伴い、`/settings` の読み取り専用表示のためにコンテナへ `ECS_CLUSTER` 環境変数を新規に注入します (`enable_scheduled_scaling` の有効/無効に関わらず)。既存デプロイでは次回 `terraform apply` 時にこの環境変数追加が差分として表示されます。ECS Express Mode の更新はカナリアデプロイのため既存アクセスへの影響はありませんが、`terraform plan` で想定外の差分が無いことを確認してから apply してください。
+
+```hcl
+enable_scheduled_scaling          = true
+scheduled_scaling_scale_down_cron = "cron(0 20 * * ? *)"      # 毎日20:00に停止
+scheduled_scaling_scale_up_cron   = "cron(0 6 ? * MON-FRI *)" # 平日6:00に再開
+scheduled_scaling_timezone        = "Asia/Tokyo"
+```
+
+上記の例では、金曜 20:00 に停止したあと土日は再開スケジュールが無いため停止したままとなり、月曜 6:00 に再開されます。つまり **1 組の日次停止 + 平日限定の再開スケジュールだけで夜間・週末の両方をカバー**できます (曜日ごとに個別の停止/再開を組む必要はありません)。
+
+有効化前に必ず確認すべきトレードオフ:
+
+- **再起動のたびにキャッシュが消える**: プロセスメモリのキャッシュ (TTL 1〜24 時間) だけでなく、DuckDB 集計結果の SQLite スナップショットも `/tmp` 上にあるため再起動で失われます
+- **毎朝のウォームアップが発生する**: 再開直後は推奨エンジンのウォームアップに実測 約 6 分かかります (実 CUR データでの計測、データ量に応じて変動)。加えて ECS タスク起動から ALB が正常応答するまで別途 約 40 秒かかります (実機確認 2026-08-22)
+- **上記を避けるため、`scheduled_scaling_scale_up_cron` は始業時刻より 2〜3 時間前に設定することを推奨**します (例: 始業 9 時なら 6〜7 時起動)
+- 停止中に ALB へアクセスすると HTTP 503 が返ります (実機確認済み、健全な挙動)
+
+有効化後は `/settings` 画面に現在のスケジュール設定 (cron 式・タイムゾーン・切替後のタスク数) が読み取り専用で表示されます。**画面から変更する手段はなく、変更は必ず `terraform.tfvars` を更新して再 apply する運用**です (アプリ自身が自分の可用性を書き換える権限は持たせない設計)。
+
 ### Step 3. terraform apply
 
 ```bash
@@ -336,6 +360,7 @@ apply は以下を**すべて新規作成**します (既存リソースの変�
 | ストレージ  | S3 バケット `<service_name>-notes-<aws_account_id>` (SSE-S3 / versioning / public block ALL / 旧バージョン 30 日 expire / force_destroy) | 常時。ノート (日次運用メモ) の永続化。アプリ env `NOTES_S3_BUCKET` 経由で参照                  |
 | ログ     | CloudWatch Logs `/aws/ecs/<service_name>` (30 日保持)          | 常時                                                                    |
 | 自動更新   | Lambda + EventBridge Scheduler + 専用 IAM ロール 2 種 + Lambda Logs | `auto_update_enabled = true` (デフォルト) のときのみ。§7 参照                       |
+| スケジュール停止 | Application Auto Scaling Scheduled Action ×2 (停止/再開)         | `enable_scheduled_scaling = true` のときのみ。デフォルト false。IAM 読み取り権限 (`ecs:ListServices` / `application-autoscaling:DescribeScheduledActions`) は有効/無効に関わらず常時付与 |
 | ドメイン   | ACM 証明書 + Route 53 レコード + ALB listener 証明書                  | カスタムドメイン指定時 (`domain_name` + `route53_hosted_zone_id`) のみ             |
 
 

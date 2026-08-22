@@ -63,6 +63,17 @@ resource "aws_ecs_express_gateway_service" "this" {
       name  = "AWS_REGION"
       value = var.aws_region
     }
+    # #704: /settings の読み取り専用カードが自分自身の Scheduled Scaling 設定を
+    # Application Auto Scaling API から引くために、所属クラスタ名を渡す。
+    # サービス名は自動生成 (ランダムsuffix付き) のため、この env だけでは特定できない。
+    # アプリ側はこのクラスタ内の service を ecs:ListServices で自己解決する
+    # (aws_ecs_express_gateway_service.this.service_arn を同リソース自身の
+    # primary_container 内で参照すると循環参照になり terraform が拒否するため、
+    # 「自分の service_arn を先に知る」アプローチは取れない)。
+    environment {
+      name  = "ECS_CLUSTER"
+      value = aws_ecs_cluster.this.name
+    }
     # ノート (日次運用メモ) を S3 に永続化するためのバケット名。アプリ側はこの env が
     # 設定されていれば S3 に書き、未設定なら Map インメモリ fallback する。
     environment {

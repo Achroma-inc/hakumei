@@ -277,6 +277,79 @@ variable "auto_update_invoker_arns" {
   }
 }
 
+variable "enable_scheduled_scaling" {
+  description = <<-EOT
+    夜間・週末に ECS タスクを自動停止するか (#704)。デフォルト false (現状維持、常時稼働)。
+
+    true にすると Application Auto Scaling の Scheduled Scaling
+    (aws_appautoscaling_scheduled_action) を 2 つ作成し、指定した時刻にタスク数を 0 (停止) /
+    1 (再開) へ自動で切り替える。ECS Express Mode が自動生成する scalable target
+    (service/<cluster>/<service>) をそのまま利用するため、専用 Lambda は不要。
+
+    トレードオフ (有効化前に必ず確認、詳細は README「夜間・週末のECSタスク自動停止」参照):
+    - 再起動のたびに Tier1 (プロセスメモリ) / Tier2 (SQLite スナップショット) のキャッシュが
+      消える。再開後は推奨エンジンの warm-up (実測 ~6 分、#369) が毎朝走る
+    - タスク起動から ALB が正常応答するまで別途 ~40 秒程度かかる (実機確認 2026-08-22)
+    - 上記 2 つの遅延を吸収するため、scheduled_scaling_scale_up_cron は始業時刻より
+      2〜3 時間前に設定することを推奨する
+    - 停止中は ALB が HTTP 503 を返す (実機確認済み、健全な挙動)
+
+    有効化時は scheduled_scaling_scale_down_cron / scheduled_scaling_scale_up_cron の指定が
+    必須 (空のままだと apply がエラーになる)。現在のスケジュール設定は /settings 画面に
+    読み取り専用で表示される (画面からの変更は不可、terraform 経由のみ)。
+  EOT
+  type        = bool
+  default     = false
+}
+
+variable "scheduled_scaling_scale_down_cron" {
+  description = <<-EOT
+    タスク停止 (MinCapacity=0, MaxCapacity=0) を実行する Application Auto Scaling の
+    cron 式。enable_scheduled_scaling = true のとき必須。
+    例: "cron(0 20 * * ? *)" (毎日 20:00、scheduled_scaling_timezone 基準)。
+    AWS の cron 式は 分 時 日 月 曜日 年 の 6 フィールド (日と曜日はどちらかを ? にする)。
+  EOT
+  type        = string
+  default     = ""
+  validation {
+    condition     = !var.enable_scheduled_scaling || length(var.scheduled_scaling_scale_down_cron) > 0
+    error_message = "enable_scheduled_scaling = true のとき scheduled_scaling_scale_down_cron は必須です (例: \"cron(0 20 * * ? *)\")"
+  }
+}
+
+variable "scheduled_scaling_scale_up_cron" {
+  description = <<-EOT
+    タスク再開 (MinCapacity=1, MaxCapacity=scheduled_scaling_max_task_count) を実行する
+    Application Auto Scaling の cron 式。enable_scheduled_scaling = true のとき必須。
+    例: "cron(0 6 ? * MON-FRI *)" (平日 6:00、scheduled_scaling_timezone 基準)。
+    scale_down_cron を毎日実行・scale_up_cron を平日のみ実行にすると、金曜 20:00 停止のまま
+    週末を挟んで月曜朝に再開する形になり、夜間・週末どちらも 1 組のスケジュールでカバーできる。
+    始業時刻より 2〜3 時間前を推奨 (variable "enable_scheduled_scaling" のトレードオフ参照)。
+  EOT
+  type        = string
+  default     = ""
+  validation {
+    condition     = !var.enable_scheduled_scaling || length(var.scheduled_scaling_scale_up_cron) > 0
+    error_message = "enable_scheduled_scaling = true のとき scheduled_scaling_scale_up_cron は必須です (例: \"cron(0 6 ? * MON-FRI *)\")"
+  }
+}
+
+variable "scheduled_scaling_timezone" {
+  description = "scheduled_scaling_scale_down_cron / scheduled_scaling_scale_up_cron を解釈するタイムゾーン (IANA 名)。デフォルトは JST"
+  type        = string
+  default     = "Asia/Tokyo"
+}
+
+variable "scheduled_scaling_max_task_count" {
+  description = <<-EOT
+    再開時に復元する MaxCapacity。ECS Express Mode が scalable target 作成時に既定で
+    設定する上限 (実機確認 2026-08-22 時点で 20) に合わせてある。この値を変えても
+    MinCapacity=1 は変わらない (通常時のタスク数は 1 のまま、負荷時のみこの上限までスケール)。
+  EOT
+  type        = number
+  default     = 20
+}
+
 variable "container_port" {
   description = "コンテナの待ち受けポート。hakumei (Next.js standalone) は 3000"
   type        = number

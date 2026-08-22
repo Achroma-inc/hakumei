@@ -78,6 +78,16 @@ basic_auth_password         = "change-me-strong-password"
 # update_schedule_cron      = "cron(0 4 * * ? *)"   # 分 時 日 月 曜日 年
 # update_schedule_timezone  = "Asia/Tokyo"
 
+# 夜間・週末の ECS タスク自動停止 (#704)
+# デフォルト false (常時稼働、現状維持)。true にすると指定時刻でタスク数を自動で 0/1 に
+# 切り替える。有効化前に variables.tf の enable_scheduled_scaling 説明にあるトレードオフ
+# (再起動毎のキャッシュ消失・毎朝の warm-up ~6分・タスク起動 ~40秒) を必ず確認すること。
+# enable_scheduled_scaling          = true
+# scheduled_scaling_scale_down_cron = "cron(0 20 * * ? *)"      # 毎日20:00に停止
+# scheduled_scaling_scale_up_cron   = "cron(0 6 ? * MON-FRI *)" # 平日6:00に再開 (週末は月曜まで停止のまま)
+# scheduled_scaling_timezone        = "Asia/Tokyo"
+# scheduled_scaling_max_task_count  = 20
+
 # ECS タスクと ALB を配置する既存の public サブネット (最低 2 AZ、同一 VPC)。
 # 空のままなら hakumei 専用 VPC + public subnet (2 AZ) を新規作成する (既存 VPC には影響しない)
 # subnet_ids = ["subnet-aaaa", "subnet-bbbb"]
