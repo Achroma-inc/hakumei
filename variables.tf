@@ -283,8 +283,9 @@ variable "enable_scheduled_scaling" {
 
     true にすると Application Auto Scaling の Scheduled Scaling
     (aws_appautoscaling_scheduled_action) を 2 つ作成し、指定した時刻にタスク数を 0 (停止) /
-    1 (再開) へ自動で切り替える。ECS Express Mode が自動生成する scalable target
-    (service/<cluster>/<service>) をそのまま利用するため、専用 Lambda は不要。
+    scheduled_scaling_min_task_count (再開、デフォルト 1) へ自動で切り替える。ECS Express
+    Mode が自動生成する scalable target (service/<cluster>/<service>) をそのまま利用する
+    ため、専用 Lambda は不要。
 
     トレードオフ (有効化前に必ず確認、詳細は README「夜間・週末のECSタスク自動停止」参照):
     - 再起動のたびに Tier1 (プロセスメモリ) / Tier2 (SQLite スナップショット) のキャッシュが
@@ -319,8 +320,9 @@ variable "scheduled_scaling_scale_down_cron" {
 
 variable "scheduled_scaling_scale_up_cron" {
   description = <<-EOT
-    タスク再開 (MinCapacity=1, MaxCapacity=scheduled_scaling_max_task_count) を実行する
-    Application Auto Scaling の cron 式。enable_scheduled_scaling = true のとき必須。
+    タスク再開 (MinCapacity=scheduled_scaling_min_task_count,
+    MaxCapacity=scheduled_scaling_max_task_count) を実行する Application Auto Scaling の
+    cron 式。enable_scheduled_scaling = true のとき必須。
     例: "cron(0 6 ? * MON-FRI *)" (平日 6:00、scheduled_scaling_timezone 基準)。
     scale_down_cron を毎日実行・scale_up_cron を平日のみ実行にすると、金曜 20:00 停止のまま
     週末を挟んで月曜朝に再開する形になり、夜間・週末どちらも 1 組のスケジュールでカバーできる。
@@ -340,11 +342,28 @@ variable "scheduled_scaling_timezone" {
   default     = "Asia/Tokyo"
 }
 
+variable "scheduled_scaling_min_task_count" {
+  description = <<-EOT
+    #738: 再開時に復元する MinCapacity (通常時のタスク数)。デフォルト 1 (既存挙動維持)。
+
+    大規模構成で可用性・負荷分散のため平日稼働中は複数タスクを維持したい場合に、1 より
+    大きい値を指定する。min > 1 にすると、再開後の Fargate 固定費と warm-up 時間 (variable
+    "enable_scheduled_scaling" のトレードオフ参照) がほぼ min 倍になる点に注意。
+  EOT
+  type        = number
+  default     = 1
+  validation {
+    condition     = !var.enable_scheduled_scaling || (var.scheduled_scaling_min_task_count >= 1 && var.scheduled_scaling_min_task_count <= var.scheduled_scaling_max_task_count)
+    error_message = "enable_scheduled_scaling = true のとき scheduled_scaling_min_task_count は 1 以上 scheduled_scaling_max_task_count 以下である必要があります"
+  }
+}
+
 variable "scheduled_scaling_max_task_count" {
   description = <<-EOT
     再開時に復元する MaxCapacity。ECS Express Mode が scalable target 作成時に既定で
-    設定する上限 (実機確認 2026-08-22 時点で 20) に合わせてある。この値を変えても
-    MinCapacity=1 は変わらない (通常時のタスク数は 1 のまま、負荷時のみこの上限までスケール)。
+    設定する上限 (実機確認 2026-08-22 時点で 20) に合わせてある。通常時のタスク数
+    (MinCapacity) は scheduled_scaling_min_task_count が制御し、この上限は負荷時の
+    スケールアウト先を指定する。
   EOT
   type        = number
   default     = 20

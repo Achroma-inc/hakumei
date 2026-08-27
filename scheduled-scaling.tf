@@ -43,7 +43,7 @@ resource "aws_appautoscaling_scheduled_action" "scale_up" {
   timezone           = var.scheduled_scaling_timezone
 
   scalable_target_action {
-    min_capacity = 1
+    min_capacity = var.scheduled_scaling_min_task_count
     max_capacity = var.scheduled_scaling_max_task_count
   }
 
